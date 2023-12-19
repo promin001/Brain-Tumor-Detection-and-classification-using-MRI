@@ -1,0 +1,125 @@
+import os
+import numpy as np
+import cv2
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
+from sklearn.utils import shuffle
+from sklearn.ensemble import RandomForestClassifier
+from tensorflow import keras
+from tensorflow.keras.applications import InceptionV3, VGG19
+from tensorflow.keras.applications.efficientnet import EfficientNetB0
+from tensorflow.keras.layers import GlobalAveragePooling2D
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+ 
+# Define the path to the original dataset
+original_dataset_path = 'C:/Users/mohiu/OneDrive/Python/Brain MRI'
+ 
+# Data preprocessing and augmentation
+image_size_inception = (128, 128)  # InceptionV3's required input size
+image_size_efficientnet = (128, 128)  # EfficientNetB0's required input size
+image_size_vgg = (128, 128)  # VGG19 input size
+batch_size = 32
+ 
+# Function to preprocess and augment data
+def preprocess_and_augment_data(data, labels, image_size):
+    # Resize images
+    data = [cv2.resize(img, image_size) for img in data]
+ 
+    # Data normalization
+    data = np.array(data) / 255.0
+ 
+    return data, labels
+ 
+# Load and preprocess the dataset
+def load_dataset(dataset_path, image_size):
+    data = []
+    labels = []
+ 
+    for folder in os.listdir(dataset_path):
+        folder_path = os.path.join(dataset_path, folder)
+        for filename in os.listdir(folder_path):
+            img_path = os.path.join(folder_path, filename)
+            img = cv2.imread(img_path)
+            if img is not None:  # Check if the image was loaded successfully
+                data.append(img)
+                labels.append(folder)
+            else:
+                print(f"Error loading image: {img_path}")
+ 
+    # Shuffle the data
+    data, labels = shuffle(data, labels, random_state=42)
+ 
+    # Preprocess and augment the loaded data
+    data, labels = preprocess_and_augment_data(data, labels, image_size)
+ 
+    return data, labels
+ 
+# Load the InceptionV3 dataset
+data_inception, labels_inception = load_dataset(original_dataset_path, image_size_inception)
+ 
+# Split the InceptionV3 data into training and testing sets
+x_train_inception, x_test_inception, y_train_inception, y_test_inception = train_test_split(
+    data_inception, labels_inception, test_size=0.2, random_state=42
+)
+ 
+# Load the EfficientNetB0 dataset
+data_efficientnet, labels_efficientnet = load_dataset(original_dataset_path, image_size_efficientnet)
+ 
+# Split the EfficientNetB0 data into training and testing sets
+x_train_efficientnet, x_test_efficientnet, y_train_efficientnet, y_test_efficientnet = train_test_split(
+    data_efficientnet, labels_efficientnet, test_size=0.2, random_state=42
+)
+ 
+# Load the VGG19 dataset
+data_vgg, labels_vgg = load_dataset(original_dataset_path, image_size_vgg)
+ 
+# Split the VGG19 data into training and testing sets
+x_train_vgg, x_test_vgg, y_train_vgg, y_test_vgg = train_test_split(data_vgg, labels_vgg, test_size=0.2, random_state=42)
+ 
+# Preprocess for VGG19 input
+x_train_vgg = np.array(x_train_vgg)
+x_test_vgg = np.array(x_test_vgg)
+x_train_vgg = keras.applications.vgg19.preprocess_input(x_train_vgg)
+x_test_vgg = keras.applications.vgg19.preprocess_input(x_test_vgg)
+ 
+# Load the InceptionV3 model for feature extraction
+inception_model = InceptionV3(weights='imagenet', include_top=False, input_shape=image_size_inception + (3,))
+x_train_features_inception = inception_model.predict(np.array(x_train_inception))
+x_test_features_inception = inception_model.predict(np.array(x_test_inception))
+ 
+# Load the EfficientNetB0 model for feature extraction
+efficientnet_model = EfficientNetB0(weights='imagenet', include_top=False, input_shape=image_size_efficientnet + (3,))
+x_train_features_efficientnet = efficientnet_model.predict(np.array(x_train_efficientnet))
+x_test_features_efficientnet = efficientnet_model.predict(np.array(x_test_efficientnet))
+ 
+# Load the VGG19 model for feature extraction
+vgg_model = VGG19(weights='imagenet', include_top=False, input_shape=image_size_vgg + (3,))
+x_train_features_vgg = vgg_model.predict(x_train_vgg)
+x_test_features_vgg = vgg_model.predict(x_test_vgg)
+ 
+# Flatten the extracted features
+x_train_features_inception = x_train_features_inception.reshape((x_train_features_inception.shape[0], -1))
+x_test_features_inception = x_test_features_inception.reshape((x_test_features_inception.shape[0], -1))
+ 
+x_train_features_efficientnet = x_train_features_efficientnet.reshape((x_train_features_efficientnet.shape[0], -1))
+x_test_features_efficientnet = x_test_features_efficientnet.reshape((x_test_features_efficientnet.shape[0], -1))
+ 
+x_train_features_vgg = x_train_features_vgg.reshape((x_train_features_vgg.shape[0], -1))
+x_test_features_vgg = x_test_features_vgg.reshape((x_test_features_vgg.shape[0], -1))
+ 
+# Concatenate the features from all three models
+x_train_features_combined = np.concatenate((x_train_features_inception, x_train_features_efficientnet, x_train_features_vgg), axis=1)
+x_test_features_combined = np.concatenate((x_test_features_inception, x_test_features_efficientnet, x_test_features_vgg), axis=1)
+ 
+# Initialize an ensemble classifier
+ensemble_classifier = RandomForestClassifier()
+ 
+# Train the ensemble classifier
+ensemble_classifier.fit(x_train_features_combined, y_train_inception)
+ 
+# Evaluate the ensemble classifier
+y_pred_ensemble = ensemble_classifier.predict(x_test_features_combined)
+accuracy_ensemble = accuracy_score(y_test_inception, y_pred_ensemble)
+print(f"\nEnsemble Classifier Accuracy: {accuracy_ensemble}")

@@ -1,0 +1,19 @@
+Step 1 - Dataset Input
+ 
+Step 2- Data Preprocessing
+           	 Augmentation
+       		 Image resizing
+        	 Fillering 
+Step 3- Feature extraction (Call Step 2 for each) LOSS
+ 
+		seraeched CNN- AdaBoost, KNN, RF, SVM, Softmax
+		Xception - AdaBoost, KNN, RF, SVM, Softmax
+		InceptionV3 - AdaBoost, KNN, RF, SVM, Softmax
+		ResNet50 - AdaBoost, KNN, RF, SVM, Softmax
+		EfficientNetB0 - AdaBoost, KNN, RF, SVM, Softmax
+		VGG19 - AdaBoost, KNN, RF, SVM, Softmax
+ 
+		
+Step 4- Pick best 3 accuracy and cross connet feature extractor with each other	
+Step 5- From Step 4 pic best two and cross connet feature extractor with each other
+Step   	
